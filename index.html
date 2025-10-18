@@ -42,6 +42,29 @@
             color: #666;
             font-size: 16px;
         }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
         
         .input-section {
             background: white;
@@ -85,6 +108,16 @@
         }
         
         .todos-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -178,17 +211,6 @@
         .delete-btn:hover {
             background: #fdd;
         }
-        
-        .footer {
-            background: white;
-            border-radius: 15px;
-            padding: 15px;
-            margin-top: 20px;
-            text-align: center;
-            color: #999;
-            font-size: 14px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
     </style>
 </head>
 <body>
@@ -196,7 +218,11 @@
         <div class="header">
             <h1>📝 ToDoアプリ</h1>
             <div class="stats">
-                完了: <span id="completed">0</span> / 全体: <span id="total">0</span>
+                未完了: <span id="incomplete">0</span> / 完了: <span id="completed">0</span>
+            </div>
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('incomplete')">📋 未完了</button>
+                <button class="tab" onclick="switchTab('completed')">✅ 完了済み</button>
             </div>
         </div>
 
@@ -207,18 +233,14 @@
             </div>
         </div>
 
-        <div class="todos-container" id="todosContainer">
-            <div class="empty-state">
-                <p>タスクがありません</p>
-                <small>上の入力欄から追加してください</small>
-            </div>
-        </div>
+        <div id="incompleteTab" class="tab-content active"></div>
+        <div id="completedTab" class="tab-content"></div>
     </div>
 
     <script>
         let todos = [];
+        let currentTab = 'incomplete';
 
-        // ページ読み込み時にデータを復元
         function loadTodos() {
             const saved = localStorage.getItem('todos');
             if (saved) {
@@ -226,43 +248,73 @@
             }
         }
 
-        // データを保存
         function saveTodos() {
             localStorage.setItem('todos', JSON.stringify(todos));
         }
 
         function updateStats() {
+            const incomplete = todos.filter(t => !t.completed).length;
             const completed = todos.filter(t => t.completed).length;
-            const total = todos.length;
+            document.getElementById('incomplete').textContent = incomplete;
             document.getElementById('completed').textContent = completed;
-            document.getElementById('total').textContent = total;
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // タブのアクティブ状態を更新
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            
+            if (tab === 'incomplete') {
+                tabs[0].classList.add('active');
+                document.getElementById('incompleteTab').classList.add('active');
+                document.getElementById('completedTab').classList.remove('active');
+            } else {
+                tabs[1].classList.add('active');
+                document.getElementById('completedTab').classList.add('active');
+                document.getElementById('incompleteTab').classList.remove('active');
+            }
+            
+            renderTodos();
         }
 
         function renderTodos() {
-            const container = document.getElementById('todosContainer');
+            const incompleteTodos = todos.filter(t => !t.completed);
+            const completedTodos = todos.filter(t => t.completed);
             
-            if (todos.length === 0) {
+            renderTabContent('incompleteTab', incompleteTodos, '未完了のタスクがありません');
+            renderTabContent('completedTab', completedTodos, '完了済みのタスクがありません');
+        }
+
+        function renderTabContent(containerId, todoList, emptyMessage) {
+            const container = document.getElementById(containerId);
+            
+            if (todoList.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <p>タスクがありません</p>
-                        <small>上の入力欄から追加してください</small>
+                        <p>${emptyMessage}</p>
+                        <small>タスクを追加してみましょう</small>
                     </div>
                 `;
                 return;
             }
 
-            container.innerHTML = todos.map((todo, index) => `
-                <div class="todo-item">
-                    <div class="checkbox ${todo.completed ? 'completed' : ''}" onclick="toggleTodo(${index})">
-                        ${todo.completed ? '✓' : ''}
+            container.innerHTML = todoList.map((todo) => {
+                const index = todos.indexOf(todo);
+                return `
+                    <div class="todo-item">
+                        <div class="checkbox ${todo.completed ? 'completed' : ''}" onclick="toggleTodo(${index})">
+                            ${todo.completed ? '✓' : ''}
+                        </div>
+                        <div class="todo-content">
+                            <div class="todo-text ${todo.completed ? 'completed' : ''}">${todo.text}</div>
+                            <div class="todo-time">${todo.createdAt}</div>
+                        </div>
+                        <button class="delete-btn" onclick="deleteTodo(${index})">🗑️</button>
                     </div>
-                    <div class="todo-content">
-                        <div class="todo-text ${todo.completed ? 'completed' : ''}">${todo.text}</div>
-                        <div class="todo-time">${todo.createdAt}</div>
-                    </div>
-                    <button class="delete-btn" onclick="deleteTodo(${index})">🗑️</button>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function addTodo() {
@@ -281,21 +333,21 @@
             });
             
             input.value = '';
-            saveTodos(); // 保存
+            saveTodos();
             updateStats();
             renderTodos();
         }
 
         function toggleTodo(index) {
             todos[index].completed = !todos[index].completed;
-            saveTodos(); // 保存
+            saveTodos();
             updateStats();
             renderTodos();
         }
 
         function deleteTodo(index) {
             todos.splice(index, 1);
-            saveTodos(); // 保存
+            saveTodos();
             updateStats();
             renderTodos();
         }
