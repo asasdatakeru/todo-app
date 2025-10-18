@@ -29,6 +29,97 @@
             padding: 30px;
             margin-bottom: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .settings-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #f0f0f0;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .settings-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .close-btn {
+            background: #f0f0f0;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 8px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .close-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .menu-item {
+            padding: 15px;
+            background: #f8f8f8;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+        }
+
+        .menu-item:hover {
+            background: #e8e8e8;
         }
         
         h1 {
@@ -211,11 +302,43 @@
         .delete-btn:hover {
             background: #fdd;
         }
+
+        .restore-btn {
+            background: #e6f7ff;
+            color: #1890ff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-right: 5px;
+        }
+
+        .restore-btn:hover {
+            background: #bae7ff;
+        }
+
+        .permanent-delete-btn {
+            background: #fee;
+            color: #e53e3e;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .permanent-delete-btn:hover {
+            background: #fdd;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
+            <button class="settings-btn" onclick="openSettings()">⚙️</button>
             <h1>📝 ToDoアプリ</h1>
             <div class="stats">
                 未完了: <span id="incomplete">0</span> / 完了: <span id="completed">0</span>
@@ -237,8 +360,33 @@
         <div id="completedTab" class="tab-content"></div>
     </div>
 
+    <!-- 設定モーダル -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ 設定</h2>
+                <button class="close-btn" onclick="closeSettings()">✕</button>
+            </div>
+            <div class="menu-item" onclick="openDeletedTasks()">
+                🗑️ 削除済みタスク
+            </div>
+        </div>
+    </div>
+
+    <!-- 削除済みタスクモーダル -->
+    <div id="deletedModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🗑️ 削除済みタスク</h2>
+                <button class="close-btn" onclick="closeDeletedTasks()">✕</button>
+            </div>
+            <div id="deletedTasksContainer"></div>
+        </div>
+    </div>
+
     <script>
         let todos = [];
+        let deletedTodos = [];
         let currentTab = 'incomplete';
 
         function loadTodos() {
@@ -246,10 +394,15 @@
             if (saved) {
                 todos = JSON.parse(saved);
             }
+            const savedDeleted = localStorage.getItem('deletedTodos');
+            if (savedDeleted) {
+                deletedTodos = JSON.parse(savedDeleted);
+            }
         }
 
         function saveTodos() {
             localStorage.setItem('todos', JSON.stringify(todos));
+            localStorage.setItem('deletedTodos', JSON.stringify(deletedTodos));
         }
 
         function updateStats() {
@@ -259,10 +412,71 @@
             document.getElementById('completed').textContent = completed;
         }
 
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('active');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+
+        function openDeletedTasks() {
+            closeSettings();
+            renderDeletedTasks();
+            document.getElementById('deletedModal').classList.add('active');
+        }
+
+        function closeDeletedTasks() {
+            document.getElementById('deletedModal').classList.remove('active');
+        }
+
+        function renderDeletedTasks() {
+            const container = document.getElementById('deletedTasksContainer');
+            
+            if (deletedTodos.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>削除済みタスクはありません</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = deletedTodos.map((todo, index) => `
+                <div class="todo-item">
+                    <div class="todo-content">
+                        <div class="todo-text">${todo.text}</div>
+                        <div class="todo-time">削除日時: ${todo.deletedAt}</div>
+                    </div>
+                    <button class="restore-btn" onclick="restoreTodo(${index})">↩️ 復元</button>
+                    <button class="permanent-delete-btn" onclick="permanentDelete(${index})">完全削除</button>
+                </div>
+            `).join('');
+        }
+
+        function restoreTodo(index) {
+            const todo = deletedTodos[index];
+            delete todo.deletedAt;
+            todo.completed = false;
+            todos.unshift(todo);
+            deletedTodos.splice(index, 1);
+            saveTodos();
+            updateStats();
+            renderTodos();
+            renderDeletedTasks();
+        }
+
+        function permanentDelete(index) {
+            if (confirm('本当に完全に削除しますか？元に戻せません。')) {
+                deletedTodos.splice(index, 1);
+                saveTodos();
+                renderDeletedTasks();
+            }
+        }
+
         function switchTab(tab) {
             currentTab = tab;
             
-            // タブのアクティブ状態を更新
             const tabs = document.querySelectorAll('.tab');
             tabs.forEach(t => t.classList.remove('active'));
             
@@ -346,6 +560,10 @@
         }
 
         function deleteTodo(index) {
+            const todo = todos[index];
+            const now = new Date();
+            todo.deletedAt = now.toLocaleString('ja-JP');
+            deletedTodos.unshift(todo);
             todos.splice(index, 1);
             saveTodos();
             updateStats();
