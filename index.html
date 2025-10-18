@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToDoアプリ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .stats {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .input-section {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            outline: none;
+        }
+        
+        input:focus {
+            border-color: #667eea;
+        }
+        
+        .add-btn {
+            background: #667eea;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .add-btn:hover {
+            background: #5568d3;
+        }
+        
+        .todos-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .empty-state {
+            background: white;
+            border-radius: 20px;
+            padding: 60px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .empty-state p {
+            color: #999;
+            font-size: 20px;
+        }
+        
+        .empty-state small {
+            color: #ccc;
+            font-size: 14px;
+            display: block;
+            margin-top: 10px;
+        }
+        
+        .todo-item {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        
+        .todo-item:hover {
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        .checkbox {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        
+        .checkbox.completed {
+            background: #4ade80;
+            border: none;
+        }
+        
+        .todo-content {
+            flex: 1;
+        }
+        
+        .todo-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .todo-text.completed {
+            color: #999;
+            text-decoration: line-through;
+        }
+        
+        .todo-time {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .delete-btn {
+            background: #fee;
+            color: #e53e3e;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        
+        .delete-btn:hover {
+            background: #fdd;
+        }
+        
+        .footer {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 ToDoアプリ</h1>
+            <div class="stats">
+                完了: <span id="completed">0</span> / 全体: <span id="total">0</span>
+            </div>
+        </div>
+
+        <div class="input-section">
+            <div class="input-container">
+                <input type="text" id="todoInput" placeholder="新しいタスクを入力...">
+                <button class="add-btn" onclick="addTodo()">➕ 追加</button>
+            </div>
+        </div>
+
+        <div class="todos-container" id="todosContainer">
+            <div class="empty-state">
+                <p>タスクがありません</p>
+                <small>上の入力欄から追加してください</small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let todos = [];
+
+        function updateStats() {
+            const completed = todos.filter(t => t.completed).length;
+            const total = todos.length;
+            document.getElementById('completed').textContent = completed;
+            document.getElementById('total').textContent = total;
+        }
+
+        function renderTodos() {
+            const container = document.getElementById('todosContainer');
+            
+            if (todos.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>タスクがありません</p>
+                        <small>上の入力欄から追加してください</small>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = todos.map((todo, index) => `
+                <div class="todo-item">
+                    <div class="checkbox ${todo.completed ? 'completed' : ''}" onclick="toggleTodo(${index})">
+                        ${todo.completed ? '✓' : ''}
+                    </div>
+                    <div class="todo-content">
+                        <div class="todo-text ${todo.completed ? 'completed' : ''}">${todo.text}</div>
+                        <div class="todo-time">${todo.createdAt}</div>
+                    </div>
+                    <button class="delete-btn" onclick="deleteTodo(${index})">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function addTodo() {
+            const input = document.getElementById('todoInput');
+            const text = input.value.trim();
+            
+            if (text === '') return;
+            
+            const now = new Date();
+            const timeString = now.toLocaleString('ja-JP');
+            
+            todos.unshift({
+                text: text,
+                completed: false,
+                createdAt: timeString
+            });
+            
+            input.value = '';
+            updateStats();
+            renderTodos();
+        }
+
+        function toggleTodo(index) {
+            todos[index].completed = !todos[index].completed;
+            updateStats();
+            renderTodos();
+        }
+
+        function deleteTodo(index) {
+            todos.splice(index, 1);
+            updateStats();
+            renderTodos();
+        }
+
+        document.getElementById('todoInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addTodo();
+            }
+        });
+
+        updateStats();
+    </script>
+</body>
+</html>
