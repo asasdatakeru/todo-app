@@ -274,6 +274,26 @@
             color: #999;
             margin-top: 5px;
         }
+
+        .todo-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .edit-btn {
+            background: #e6f7ff;
+            color: #1890ff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .edit-btn:hover {
+            background: #bae7ff;
+        }
         
         .delete-btn {
             background: #fee;
@@ -392,6 +412,33 @@
         .permanent-delete-btn:hover {
             background: #fdd;
         }
+
+        .edit-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .edit-form label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .save-btn {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .save-btn:hover {
+            background: #5568d3;
+        }
     </style>
 </head>
 <body>
@@ -434,6 +481,7 @@
         <div id="completedTab" class="tab-content"></div>
     </div>
 
+    <!-- 設定モーダル -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -446,6 +494,7 @@
         </div>
     </div>
 
+    <!-- 削除済みタスクモーダル -->
     <div id="deletedModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -456,11 +505,34 @@
         </div>
     </div>
 
+    <!-- 編集モーダル -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ タスクを編集</h2>
+                <button class="close-btn" onclick="closeEditModal()">✕</button>
+            </div>
+            <div class="edit-form">
+                <label>タスク名</label>
+                <input type="text" id="editInput">
+                <label>カテゴリー</label>
+                <select id="editCategorySelect">
+                    <option value="other">その他</option>
+                    <option value="work">仕事</option>
+                    <option value="personal">プライベート</option>
+                    <option value="study">勉強</option>
+                </select>
+                <button class="save-btn" onclick="saveEdit()">💾 保存</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let todos = [];
         let deletedTodos = [];
         let currentTab = 'incomplete';
         let currentFilter = 'all';
+        let editingIndex = null;
 
         function loadTodos() {
             const saved = localStorage.getItem('todos');
@@ -501,6 +573,38 @@
 
         function closeDeletedTasks() {
             document.getElementById('deletedModal').classList.remove('active');
+        }
+
+        function openEditModal(index) {
+            editingIndex = index;
+            const todo = todos[index];
+            document.getElementById('editInput').value = todo.text;
+            document.getElementById('editCategorySelect').value = todo.category;
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            editingIndex = null;
+            document.getElementById('editModal').classList.remove('active');
+        }
+
+        function saveEdit() {
+            if (editingIndex === null) return;
+            
+            const newText = document.getElementById('editInput').value.trim();
+            const newCategory = document.getElementById('editCategorySelect').value;
+            
+            if (newText === '') {
+                alert('タスク名を入力してください');
+                return;
+            }
+            
+            todos[editingIndex].text = newText;
+            todos[editingIndex].category = newCategory;
+            
+            saveTodos();
+            renderTodos();
+            closeEditModal();
         }
 
         function renderDeletedTasks() {
@@ -627,7 +731,10 @@
                             <span class="todo-category ${todo.category}">${categoryNames[todo.category]}</span>
                             <div class="todo-time">${todo.createdAt}</div>
                         </div>
-                        <button class="delete-btn" onclick="deleteTodo(${index})">🗑️</button>
+                        <div class="todo-actions">
+                            <button class="edit-btn" onclick="openEditModal(${index})">✏️</button>
+                            <button class="delete-btn" onclick="deleteTodo(${index})">🗑️</button>
+                        </div>
                     </div>
                 `;
             }).join('');
